@@ -6,6 +6,7 @@ from src.services.registration_service import RegistrationService
 from src.services.router_service import RouterService
 from src.config.config import Config
 from src.utils.logger import configure_logging
+from src.reports.report_devices import ReportDevices
 
 configure_logging()
 
@@ -33,8 +34,8 @@ def main():
         try:
             devices = scanner.scan()
             logging.info(f"📡 Found {len(devices)} device(s)")
-            # send_report(agent_id=AGENT_ID, devices=devices)
-            # logging.info("✅ Rapport skickad till backend")
+            number_of_devices = ReportDevices().report(devices)
+            logging.info(f"Reported {number_of_devices} to {cfg.backend_url}")
         except Exception as e:
             logging.error(f"Something went wrong : {e}")
         time.sleep(cfg.scan_interval)
