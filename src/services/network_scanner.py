@@ -1,13 +1,23 @@
+import logging
 import subprocess
 import re
 import socket
-import platform
 from typing import List
 from src.models.device import Device
 from src.utils.helper import Helper
 from src.services.network_service import NetworkService
 
+log = logging.getLogger(__name__)
+
 class NetworkScanner:
+    """
+    Scans the local network to detect connected devices.
+    Uses ARP for device discovery and attempts to ping and resolve host names.
+
+    Supported OS:
+        - Windows (via 'arp -a')
+        - Linux/macOS (via 'arp -a' and regex parsing)
+    """
 
     WINDOWS = 'windows'
     LINUX = 'linux'
@@ -25,7 +35,21 @@ class NetworkScanner:
             raise Exception(f"Unsupported OS: {self.os}")
         
     def _scan_windows(self) -> List[Device]:
-        result = subprocess.run(["arp", "-a"], capture_output=True, text=True)
+        """
+        Scans the local network on Windows using 'arp -a' command.
+
+        Parses the ARP table to extract IP and MAC addresses,
+        resolves host names, pings devices, and classifies them.
+
+        Returns:
+            List[Device]: A list of discovered devices on the network.
+        """
+        try:
+            result = subprocess.run(["arp", "-a"], capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as e:
+            log.warning(f"'arp -a' command failed: {e}")
+            return []
+        
         devices = []
 
         for line in result.stdout.splitlines():
@@ -38,30 +62,22 @@ class NetworkScanner:
                 mac = parts[1]
                 if mac.lower() in ["ff-ff-ff-ff-ff-ff", "01-00-5e-00-00-fb"]:
                     continue
-
-                hostname = self._resolve_hostname(ip)
-
-                ping = NetworkService.ping(ip, self.os)
-                if ping:
-                    seenAt = Helper.now_utc_iso()
-                    online = True
-                else:
-                    seenAt = None
-                    online = False
-
-                devices.append(Device(
-                    ip=ip,
-                    mac=mac.replace("-", ":"),
-                    hostname=hostname,
-                    seenAt=seenAt,
-                    online=online,
-                    deviceType=NetworkService.classify_device(ip)
-                ))
-
+                devices.append(self._build_device(ip, mac))
         return devices
     
     def _scan_unix(self) -> List[Device]:
-        result = subprocess.run(["arp", "-a"], capture_output=True, text=True)
+        """
+        Scans the local network using ARP on Unix-like systems.
+
+        Returns:
+            List[Device]: A list of discovered devices on the network.
+        """
+        try:
+            result = subprocess.run(["arp", "-a"], capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as e:
+            log.warning(f"'arp -a' command failed on Unix: {e}")
+            return []
+
         devices = []
 
         for line in result.stdout.splitlines():
@@ -69,33 +85,50 @@ class NetworkScanner:
             if match:
                 ip = match.group(1)
                 mac = match.group(2)
-
-                hostname = self._resolve_hostname(ip)
-
-                ping = NetworkService.ping(ip, self.os)
-                if ping:
-                    seenAt = Helper.now_utc_iso()
-                    online = True
-                else:
-                    seenAt = None
-                    online = False
-
-                devices.append(Device(
-                    ip=ip,
-                    mac=mac.replace("-", ":"),
-                    hostname=hostname,
-                    seenAt=seenAt,
-                    online=online,
-                    deviceType=NetworkService.classify_device(ip)
-                ))
-
+                devices.append(self._build_device(ip, mac))
         return devices
     
-    def _resolve_hostname(self, ip):
+    def _resolve_hostname(self, ip: str) -> str:
+        """
+        Attempts to resolve a hostname from an IP address.
+
+        Args:
+            ip (str): The IP address.
+
+        Returns:
+            str: The hostname if found, otherwise 'Unknown'.
+        """
         try:
             return socket.gethostbyaddr(ip)[0]
-        except:
+        except socket.herror:
             return "Unknown"
 
+    def _build_device(self, ip: str, raw_mac: str) -> Device:
+        """
+        Constructs a Device object from IP and MAC address.
+
+        Args:
+            ip (str): IP address of the device.
+            raw_mac (str): MAC address, possibly in Windows format.
+
+        Returns:
+            Device: Fully constructed device with hostname, online status, etc.
+        """
+        mac = raw_mac.replace("-", ":")
+        hostname = self._resolve_hostname(ip)
+        ping = NetworkService.ping(ip, self.os)
+
+        seenAt = Helper.now_utc_iso() if ping else None
+        online = bool(ping)
+
+        log.debug(f"Found device: {ip} - {mac} - {hostname}")
+
+        return Device(
+            ip=ip,
+            mac=mac,
+            hostname=hostname,
+            seenAt=seenAt,
+            online=online
+        )
 
     

@@ -1,12 +1,28 @@
+import logging
 import subprocess
 import time
-from src.models.device_type import DeviceType
+
+log = logging.getLogger(__name__)
 
 class NetworkService:
-
+    """
+    Provides utilities for network operations like pinging and IP-based device classification.
+    """
     @staticmethod
     def ping(ip: str, os: str, retries: int = 3, delay: float = 0.5, timeout: int = 1) -> bool:
+        """
+        Pings the given IP address to check if the device is online.
 
+        Args:
+            ip (str): Target IP address.
+            os (str): Operating system to adjust ping parameters.
+            retries (int): Number of retry attempts.
+            delay (float): Delay in seconds between retries.
+            timeout (int): Timeout in seconds for each ping.
+
+        Returns:
+            bool: True if ping successful, False otherwise.
+        """
         is_windows = os.lower() == "windows"
         count_param = "-n" if is_windows else "-c"
         timeout_param = "-w" if is_windows else "-W"
@@ -22,21 +38,7 @@ class NetworkService:
                 if result.returncode == 0:
                     return True
             except Exception:
-                pass
+                log.debug(f"Ping failed for {ip} after {retries} attempts.")
             time.sleep(delay)
 
         return False
-
-    @staticmethod  
-    def classify_device(ip: str) -> DeviceType:
-        if ip.startswith("224."):
-            return DeviceType.MULTICAST
-        if ip.startswith("239."):
-            return DeviceType.MULTICAST
-        if ip.startswith("255."):
-            return DeviceType.BROADCAST
-        if any(ip.startswith(prefix) for prefix in ["46.", "178."]):
-            return DeviceType.EXTERNAL
-        if ip.startswith("192.168.") or ip.startswith("10.") or ip.startswith("172."):
-            return DeviceType.REAL
-        return DeviceType.UNKNOWN

@@ -8,9 +8,20 @@ LINUX   = "linux"
 DARWIN  = "darwin"
 
 class WiFiInfo:
-
+    """
+    Utility class to fetch the SSID (WiFi network name) on different platforms.
+    """
     @staticmethod
     def get_ssid(system: str) -> str:
+        """
+        Returns the SSID of the connected WiFi network based on OS.
+
+        Args:
+            system (str): OS name in lowercase ('windows', 'linux', 'darwin').
+
+        Returns:
+            str: The SSID name, or 'Unknown' / 'Unsupported' if unavailable.
+        """
         system = system.lower() 
         if system == WINDOWS:
             return WiFiInfo._windows_ssid()
@@ -18,10 +29,17 @@ class WiFiInfo:
             return WiFiInfo._macos_ssid()
         if system == LINUX:
             return WiFiInfo._linux_ssid()
+        log.warning(f"Unsupported OS for SSID lookup: {system}")
         return "Unsupported"
 
     @staticmethod
     def _windows_ssid() -> str:
+        """
+        Retrieves the SSID on Windows using 'netsh wlan show interfaces'.
+
+        Returns:
+            str: The SSID if found, otherwise 'Unknown'.
+        """
         try:
             out = subprocess.check_output(
                 ["netsh", "wlan", "show", "interfaces"], text=True
@@ -35,6 +53,12 @@ class WiFiInfo:
 
     @staticmethod
     def _macos_ssid() -> str:
+        """
+        Retrieves the SSID on macOS using the 'airport' utility.
+
+        Returns:
+            str: The SSID if found, otherwise 'Unknown'.
+        """
         try:
             out = subprocess.check_output(
                 ["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport", "-I"],
@@ -49,7 +73,12 @@ class WiFiInfo:
 
     @staticmethod
     def _linux_ssid() -> str:
+        """
+        Retrieves the SSID on Linux using 'iwgetid'.
 
+        Returns:
+            str: The SSID if found, otherwise 'Unknown'.
+        """
         if not shutil.which("iwgetid"):
             log.debug("iwgetid missing! Maybe running Alpine without wireless-tools")
             return "Unknown"
