@@ -3,9 +3,6 @@ import logging
 import platform
 import time
 from src.config.config import Config
-from src.models.agent import Agent
-from src.models.agent_status import AgentStatus
-from src.services.status_reporter import StatusReporter
 
 log = logging.getLogger(__name__)
 
@@ -48,20 +45,3 @@ class Helper:
         Example: '2025-06-06T20:01:58.123456+00:00'
         """
         return datetime.now(timezone.utc).isoformat()
-    
-    @staticmethod
-    def update_status_if_changed(agent: Agent, desired_status: AgentStatus, error_message: str = "") -> None:
-        """
-        Compares the current agent status with the desired one and updates if different.
-
-        Args:
-            agent (Agent): The current agent object.
-            desired_status (AgentStatus): The new status you want to apply.
-            error_message (str, optional): Optional error message to report.
-        """
-        if agent.status != desired_status:
-            log.debug(f"Agent status changing from {agent.status.name} to {desired_status.name}")
-            agent.status = desired_status
-            StatusReporter.update(status=desired_status, error_message=error_message)
-        else:
-            log.debug(f"Agent status remains unchanged: {agent.status.name}")
