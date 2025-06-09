@@ -1,4 +1,3 @@
-# src/utils/wifi_info.py
 import subprocess, logging, shutil
 
 log = logging.getLogger(__name__)

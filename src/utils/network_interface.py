@@ -6,6 +6,8 @@ class NetworkInterface:
     """
     Utility class for detecting network interface information.
     """
+    AF_LINK = getattr(psutil, "AF_LINK", 17)
+
     @staticmethod
     def get_primary_interface() -> Optional[str]:
         """
@@ -46,7 +48,7 @@ class NetworkInterface:
         for addr in addrs:
             if addr.family == socket.AF_INET:
                 ip = addr.address
-            elif addr.family == psutil.AF_LINK:
+            elif addr.family == NetworkInterface.AF_LINK:
                 mac = addr.address
 
         return ip, mac

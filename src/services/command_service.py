@@ -52,17 +52,17 @@ class CommandService:
         log.info(f"Executing command: {cmd_type}")
 
         if cmd_type == "scan":
-            Helper.update_status_if_changed(self.agent, AgentStatus.RUNNING)
+            StatusReporter.update(self.agent, AgentStatus.RUNNING)
             devices = self.scanner.scan()
             log.info(f"Found {len(devices)} device(s)")
             ReportDevices.report(devices)
 
         elif cmd_type == "pause":
-            Helper.update_status_if_changed(self.agent, AgentStatus.PAUSED)
+            StatusReporter.update(self.agent, AgentStatus.PAUSED)
 
         elif cmd_type == "shutdown":
             log.info("Received shutdown command. Exiting agent...")
-            Helper.update_status_if_changed(self.agent, AgentStatus.SHUTDOWN)
+            StatusReporter.update(self.agent, AgentStatus.SHUTDOWN)
             exit(0)
 
         else:

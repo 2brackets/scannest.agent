@@ -8,10 +8,8 @@ from src.services.network_scanner import NetworkScanner
 from src.services.registration_service import RegistrationService
 from src.services.router_service import RouterService
 from src.config.config import Config
-from src.services.status_reporter import StatusReporter
-from src.utils.helper import Helper
 from src.utils.logger import configure_logging
-from src.reports.report_devices import ReportDevices
+from src.services.status_reporter import StatusReporter
 
 configure_logging()
 
@@ -40,7 +38,7 @@ def main():
         log.warning("Could not find router")
 
     scanner = NetworkScanner()
-    Helper.update_status_if_changed(agent, AgentStatus.RUNNING)
+    StatusReporter.update(agent, AgentStatus.RUNNING)
     command_service = CommandService(agent=agent, scanner=scanner)
     while True:
         log.info("Starting new scan...")
@@ -48,7 +46,7 @@ def main():
             command_service.check_for_commands()
         except Exception as e:
             log.error("Something went wrong:\n" + traceback.format_exc())
-            Helper.update_status_if_changed(
+            StatusReporter.update(
                 agent=agent,
                 desired_status=AgentStatus.ERROR,
                 error_message="Something went wrong:\n" + traceback.format_exc()
